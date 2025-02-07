@@ -5,7 +5,7 @@
 # Citation: If you use this code, please cite Lopez-Corbalan, R.
 
 import math
-import readlines
+import readline
 
 # Constants
 R = 0.008314  # Gas constant in kJ/(mol·K)
