@@ -4,7 +4,7 @@
 import os
 import shutil
 import subprocess
-import readlines
+import readline
 
 # Author: Richard Lopez Corbalan
 # GitHub: github.com/richardloopez
