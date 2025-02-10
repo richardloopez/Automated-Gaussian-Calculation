@@ -13,24 +13,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 #########################################################################################################################################################################################
 # User configuration
-
-# Set the memory allocation for Gaussian calculations
-memory = "16GB"
-
-# Set the number of processors to use for each calculation
+memory = "16GB"   
 num_processors = "16"
-
-# Define which steps of the calculation process to execute
 steps_to_execute = [1, 2, 3, 4, 5, 6]
+max_concurrent_molecules = 10
 
-# Set the maximum number of molecules to process concurrently
-max_concurrent_molecules = 2
-
-# Default charge and multiplicity for molecules
+# Default charge and multiplicity
 default_charge = "0"
 default_multiplicity = "1"
 
-# Specific Gaussian commands for each step of the calculation process
+# Specific commands for each step
 step_commands = {
     1: "# Opt Freq B3LYP/6-31+G(d,p) SCRF=(Solvent=Ethanol) Geom=Connectivity",
     2: "# B3LYP/6-31+G(d,p) TD=NStates=6 SCRF=(Solvent=Ethanol) Geom=Check Guess=Read",
@@ -42,15 +34,6 @@ step_commands = {
 #########################################################################################################################################################################################
 
 def wait_for_log_completion(log_file):
-    """
-    Monitor the Gaussian log file for completion or errors.
-    
-    Args:
-    log_file (str): Path to the Gaussian log file.
-    
-    Returns:
-    bool: True if the calculation completed successfully, False if an error was detected.
-    """
     while True:
         if os.path.exists(log_file):
             with open(log_file, "r") as f:
@@ -63,19 +46,9 @@ def wait_for_log_completion(log_file):
                     return False
         
         print(f"Waiting for {log_file} to complete...")
-        time.sleep(60)  # Wait for 60 seconds before checking again
+        time.sleep(60)  # Increased wait time to reduce log spam
 
 def create_cmxyz(input_path, base_folder):
-    """
-    Create a .cmxyz file from various input formats (.chk, .xyz, .com).
-    
-    Args:
-    input_path (str): Path to the input file.
-    base_folder (str): Base directory for output files.
-    
-    Returns:
-    tuple: Path to the created .cmxyz file and the local charge and multiplicity (if applicable).
-    """
     base_name = os.path.splitext(os.path.basename(input_path))[0]
     os.makedirs(os.path.join(base_folder, "bases"), exist_ok=True)
     cmxyz_path = os.path.join(base_folder, "bases", f"{base_name}.cmxyz")
@@ -97,100 +70,124 @@ def create_cmxyz(input_path, base_folder):
         local_charge, local_multiplicity = lines[7].split()
         geometry = ''.join(lines[8:])
     else:
-        raise ValueError("Unsupported file format.")
+        raise ValueError("Unsupported file format. Use .xyz, .com, or .chk")
     
-    # Write the .cmxyz file
     with open(cmxyz_path, 'w') as f:
         f.write(f"{local_charge} {local_multiplicity}\n")
-        f.write(geometry)
+        if not input_path.endswith(".chk"):
+            f.write(geometry)
+        f.write("\n")
     
-    return cmxyz_path, (local_charge, local_multiplicity)
+    return cmxyz_path, geometry
 
-def run_gaussian(input_file, output_file):
-    """
-    Execute a Gaussian calculation.
-    
-    Args:
-    input_file (str): Path to the Gaussian input file.
-    output_file (str): Path to save the Gaussian output file.
-    
-    Returns:
-    int: Return code of the Gaussian process.
-    """
-    command = f"g16 < {input_file} > {output_file}"
-    process = subprocess.Popen(command, shell=True)
-    return process.wait()
+def generate_com(com_path, charge, multiplicity, memory, num_processors, step, commands, molecule_name, geometry=None):
+    with open(com_path, 'w') as f:
+        f.write(f"%mem={memory}\n")
+        f.write(f"%nprocshared={num_processors}\n")
+        f.write(f"%chk=step{step}.chk\n")
+        f.write(f"{commands}\n")
+        f.write("\n")
+        f.write(f"{molecule_name} Step {step}\n")
+        f.write("\n")
+        f.write(f"{charge} {multiplicity}\n")
+        if geometry:
+            f.write(geometry)
+        f.write("\n")
 
-def process_molecule(molecule_path, base_folder):
-    """
-    Process a single molecule through all specified calculation steps.
+def launch_gaussian(com_file):
+    directory = os.path.dirname(com_file)
+    file_name = os.path.basename(com_file)
+    log_file = os.path.join(directory, file_name.replace(".com", ".log"))
+
+    print(f"Launching Gaussian for: {com_file}")
+    print(f"Expected log file path: {log_file}")
+    original_dir = os.getcwd()
+
+    try:
+        os.chdir(directory)
+        subprocess.run(f"launch_g16 {file_name}", shell=True, check=True)
+        os.chdir(original_dir)
+        time.sleep(2)  
+        return wait_for_log_completion(log_file)
+    except subprocess.CalledProcessError as e:
+        print(f"Error launching Gaussian: {e}")
+        return False
+
+def execute_step(base_folder, step, commands, cmxyz_path, is_first_step, geometry):
+    base_name = os.path.basename(base_folder)
+    step_folder = os.path.join(base_folder, f"step_{step}")
+    os.makedirs(step_folder, exist_ok=True)
     
-    Args:
-    molecule_path (str): Path to the molecule input file.
-    base_folder (str): Base directory for output files.
+    current_com = os.path.join(step_folder, f"step{step}.com")
+    log_file = os.path.join(step_folder, f"step{step}.log")
+    charge, multiplicity = default_charge, default_multiplicity
     
-    Returns:
-    bool: True if all steps completed successfully, False otherwise.
-    """
-    cmxyz_path, charge_mult = create_cmxyz(molecule_path, base_folder)
-    base_name = os.path.splitext(os.path.basename(cmxyz_path))[0]
+    if os.path.exists(cmxyz_path):
+        with open(cmxyz_path, 'r') as f:
+            charge, multiplicity = f.readline().split()
     
-    for step in steps_to_execute:
-        step_folder = os.path.join(base_folder, f"step{step}")
-        os.makedirs(step_folder, exist_ok=True)
-        
-        input_file = os.path.join(step_folder, f"{base_name}.com")
-        chk_file = os.path.join(step_folder, f"{base_name}.chk")
-        log_file = os.path.join(step_folder, f"{base_name}.log")
-        
-        # Create Gaussian input file
-        with open(input_file, 'w') as f:
-            f.write(f"%Chk={chk_file}\n")
-            f.write(f"%Mem={memory}\n")
-            f.write(f"%NProcShared={num_processors}\n")
-            f.write(f"{step_commands[step]}\n\n")
-            f.write(f"Title Card Required\n\n")
-            
-            if charge_mult:
-                f.write(f"{charge_mult[0]} {charge_mult[1]}\n")
-            
-            if step == 1:
-                with open(cmxyz_path, 'r') as cmxyz:
-                    f.write(cmxyz.read())
-            else:
-                f.write("\n")
-        
-        # Run Gaussian calculation
-        run_gaussian(input_file, log_file)
-        
-        # Wait for log file completion and check for errors
-        if not wait_for_log_completion(log_file):
+    if is_first_step:
+        chk_source = os.path.join(base_folder, "bases", f"{base_name}.chk")
+    else:
+        previous_step = steps_to_execute[steps_to_execute.index(step) - 1]
+        chk_source = os.path.join(base_folder, f"step_{previous_step}", f"step{previous_step}.chk")
+    
+    chk_destination = os.path.join(step_folder, f"step{step}.chk")
+    if os.path.exists(chk_source):
+        shutil.copy(chk_source, chk_destination)
+    
+    generate_com(current_com, charge, multiplicity, memory, num_processors, step, commands, base_name, geometry if is_first_step else None)
+    return launch_gaussian(current_com)
+
+def process_file(input_path):
+    if not os.path.exists(input_path):
+        print(f"File not found: {input_path}")
+        return False
+    
+    base_name = os.path.splitext(os.path.basename(input_path))[0]
+    base_folder = os.path.join(os.getcwd(), base_name)
+    os.makedirs(base_folder, exist_ok=True)
+    cmxyz_path, geometry = create_cmxyz(input_path, base_folder)
+    
+    for i, step in enumerate(steps_to_execute):
+        success = execute_step(base_folder, step, step_commands.get(step, ""), cmxyz_path, is_first_step=(i == 0), geometry=geometry)
+        if not success:
+            print(f"Error in step {step} for {input_path}. Stopping execution for this molecule.")
             return False
     
+    print(f"All steps completed for: {input_path}")
     return True
 
 def main():
-    """
-    Main function to process all molecules in the input folder.
-    """
-    input_folder = "input"
-    output_folder = "output"
-    os.makedirs(output_folder, exist_ok=True)
+    input_files = glob.glob("*.xyz") + glob.glob("*.com") + glob.glob("*.chk")
+    if not input_files:
+        print("No valid input files found.")
+        return
     
-    input_files = glob.glob(os.path.join(input_folder, "*.*"))
+    print(f"Found input files: {input_files}") 
     
-    with ThreadPoolExecutor(max_workers=max_concurrent_molecules) as executor:
-        futures = []
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_to_file = {}
         for input_file in input_files:
-            base_name = os.path.splitext(os.path.basename(input_file))[0]
-            molecule_folder = os.path.join(output_folder, base_name)
-            os.makedirs(molecule_folder, exist_ok=True)
-            futures.append(executor.submit(process_molecule, input_file, molecule_folder))
+            future = executor.submit(process_file, input_file)
+            future_to_file[future] = input_file
+            time.sleep(5)  # Espera 5 segundos antes de lanzar el siguiente trabajo
         
-        for future in as_completed(futures):
-            result = future.result()
-            if not result:
-                print("Error occurred during molecule processing.")
+        for future in as_completed(future_to_file):
+            input_file = future_to_file[future]
+            try:
+                success = future.result()
+                if success:
+                    print(f"Successfully processed: {input_file}")
+                else:
+                    print(f"Failed to process: {input_file}")
+            except Exception as exc:
+                print(f"{input_file} generated an exception: {exc}")
+
+    print("All calculations are completed.")
+
+
 
 if __name__ == "__main__":
     main()
+
