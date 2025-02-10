@@ -41,7 +41,7 @@ def wait_for_log_completion(log_file):
                 if "Normal termination" in content:
                     print(f"{log_file} completed successfully.")
                     return True
-                elif "Leave Link" in content:
+                elif "Lnk1e" in content:
                     print(f"Error detected in {log_file}. Stopping execution.")
                     return False
         
