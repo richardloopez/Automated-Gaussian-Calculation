@@ -166,7 +166,7 @@ def main():
     
     print(f"Found input files: {input_files}") 
     
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    with ThreadPoolExecutor(max_workers=max_concurrent_molecules) as executor:
         future_to_file = {}
         for input_file in input_files:
             future = executor.submit(process_file, input_file)
