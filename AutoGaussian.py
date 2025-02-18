@@ -25,12 +25,12 @@ default_multiplicity = "1"
 
 # Specific commands for each step
 step_commands = {
-    1: "",
-    2: "",
-    3: "",
-    4: "",
-    5: "#p PBE1PBE/6-31+G(d) TD=(Read,NStates=1) SCRF=(Solvent=Water, CorrectedLR, NonEquilibrium=Save) Geom=Check Guess=Read NoSymm",
-    6: "#p PBE1PBE/6-31+G(d) SCRF=(Solvent=Water, NonEquilibrium=Read) Geom=Check Guess=Read NoSymm",
+    1: "# Opt Freq B3LYP/6-31+G(d,p) SCRF=(Solvent=Ethanol)",
+    2: "# B3LYP/6-31+G(d,p) TD=NStates=6 SCRF=(Solvent=Ethanol) Geom=Check Guess=Read",
+    3: "# B3LYP/6-31+G(d,p) TD=(NStates=6,Root=1) Geom=Check Guess=Read SCRF=(Solvent=Ethanol,CorrectedLR)",
+    4: "# B3LYP/6-31+G(d,p) TD=(NStates=6,Root=1) SCRF=(Solvent=Ethanol) Geom=Check Guess=Read Opt=CalcFC Freq NoSymm",
+    5: "# B3LYP/6-31+G(d,p) TD=(Read,NStates=6,Root=1) Geom=Check Guess=Read SCRF=(Solvent=Ethanol,CorrectedLR,NonEquilibrium=Save) NoSymm",
+    6: "# B3LYP/6-31+G(d,p) SCRF=(Solvent=Ethanol,NonEquilibrium=Read) Geom=Check Guess=Read NoSymm",
 }
 #########################################################################################################################################################################################
 
