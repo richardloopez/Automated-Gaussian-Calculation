@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
 
+# Author: Richard Lopez Corbalan
+# GitHub: github.com/richardloopez
+# Citation: If you use this code, please cite Lopez-Corbalan, R.
+
 import os
 import csv
 import statistics
 
 def search_esp_charges(folder, base_dir):
     """
-    Busca 'ESP charges:' desde el principio del archivo .log y extrae las siguientes 73 líneas.
+    Searches for 'ESP charges:' from the beginning of the .log file and extracts the following 73 lines. (one more than the desired atoms is needed)
     
     Args:
-    folder (str): La carpeta donde buscar
-    base_dir (str): El directorio base desde donde se lanzó el script
+    folder (str): The folder to search in
+    base_dir (str): The base directory from where the script was launched
     
     Returns:
-    dict: Un diccionario con la ruta relativa del archivo como clave y las cargas como valor
+    dict: A dictionary with the relative path of the file as key and the charges as value
     """
-    print(f"Buscando en: {folder}")
+    print(f"Searching in: {folder}")
     os.chdir(folder)
     
     log_files = [f for f in os.listdir() if f.endswith(".log")]
@@ -42,23 +46,23 @@ def search_esp_charges(folder, base_dir):
                         if len(parts) >= 3:
                             results[relative_path].append(float(parts[2]))
                         else:
-                            results[relative_path].append(0.0)  # Usar 0.0 para cálculos numéricos
+                            results[relative_path].append(0.0)  # Use 0.0 for numerical calculations
         except Exception as e:
-            print(f"Error al procesar {log_file}: {str(e)}")
+            print(f"Error processing {log_file}: {str(e)}")
     
     os.chdir(base_dir)
     return results
 
 def explore_directory(base_folder, max_depth):
     """
-    Explora directorios recursivamente hasta una profundidad especificada.
+    Explores directories recursively up to a specified depth.
     
     Args:
-    base_folder (str): La carpeta inicial para la exploración
-    max_depth (int): La profundidad máxima para explorar
+    base_folder (str): The initial folder for exploration
+    max_depth (int): The maximum depth to explore
     
     Returns:
-    dict: Un diccionario con todos los resultados
+    dict: A dictionary with all the results
     """
     all_results = {}
     
@@ -70,7 +74,7 @@ def explore_directory(base_folder, max_depth):
             folder_path = os.path.join(current_folder, folder)
             
             if os.path.isdir(folder_path):
-                print(f"Explorando: {folder_path}")
+                print(f"Exploring: {folder_path}")
                 results = search_esp_charges(folder_path, base_folder)
                 all_results.update(results)
                 explore(folder_path, current_depth + 1)
@@ -78,18 +82,18 @@ def explore_directory(base_folder, max_depth):
     explore(base_folder, 0)
     return all_results
 
-# Obtener entradas del usuario
-depth_degree = int(input("¿Cuál es el grado de profundidad de las subcarpetas? [1 - infinito) [carpeta que contiene este código = 0] [0 está permitido] : "))
+# Get user input
+depth_degree = int(input("What is the depth degree of the subfolders? [1 - infinity) [folder containing this code = 0] [0 is allowed] : "))
 
-# Iniciar la exploración desde el directorio de trabajo actual
+# Start exploration from the current working directory
 base_dir = os.getcwd()
 all_results = explore_directory(base_dir, depth_degree)
 
-# Calcular media y desviación estándar
+# Calculate mean and standard deviation
 means = []
 std_devs = []
 for charges in zip(*all_results.values()):
-    charges = [c for c in charges if c != 0.0]  # Excluir valores 0.0 para cálculos
+    charges = [c for c in charges if c != 0.0]  # Exclude 0.0 values for calculations
     if charges:
         means.append(statistics.mean(charges))
         std_devs.append(statistics.stdev(charges) if len(charges) > 1 else 0.0)
@@ -97,19 +101,19 @@ for charges in zip(*all_results.values()):
         means.append(0.0)
         std_devs.append(0.0)
 
-# Escribir resultados en un archivo CSV
+# Write results to a CSV file
 with open(os.path.join(base_dir, "ESP_Charges.csv"), "w", newline='') as csvfile:
     writer = csv.writer(csvfile)
     
-    # Escribir encabezados
+    # Write headers
     headers = ["Atom Number"] + list(all_results.keys()) + ["Mean", "Std Dev"]
     writer.writerow(headers)
     
-    # Escribir datos
+    # Write data     ########ATOM RANGE
     for i in range(73):
         row = [i+1] + [results[i] if i < len(results) else '' for results in all_results.values()]
         row.append(means[i])
         row.append(std_devs[i])
         writer.writerow(row)
 
-print("Los resultados se han escrito en ESP_Charges.csv en el directorio base.")
+print("The results have been written to ESP_Charges.csv in the base directory.")
