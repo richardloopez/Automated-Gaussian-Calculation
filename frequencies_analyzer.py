@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# Author: Richard Lopez Corbalan
+# GitHub: github.com/richardloopez
+# Citation: If you use this code, please cite Lopez-Corbalan, R.
+
 import os
 import glob
 import csv
