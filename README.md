@@ -202,11 +202,11 @@ python mul&xyz_to_pdb.py molecule_geometries.xyz template.pdb output_molecule
 This will generate files like `output_molecule_1.pdb`, `output_molecule_2.pdb`, etc., for each
 geometry in `molecule_geometries.xyz`.
 Input Files
-   1. **XYZ File**:
+   1. XYZ File:
 - Contains mul&ple molecular geometries in XYZ format.
 - Each geometry starts with the number of atoms, followed by a comment line, and then
 atomic coordinates.
-  2. **Base PDB File**:
+  2. Base PDB File:
 - A valid PDB structure with ATOM/HETATM records.
 - Must have the same number of atoms as each geometry in the XYZ file.
 Output
