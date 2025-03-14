@@ -1,4 +1,4 @@
-# Automated-Gaussian-Calculation
+# Automated-Gaussian-Calculations
 -Some Scripts to automate time-consumming tasks in a high-configurable way
 
 -Each script has an explanation its functions and how it works
@@ -176,50 +176,50 @@ The results are saved in a CSV file called frequency_results.csv. For each proce
 
 
 **multixyz_to_pdb.py**
-## Overview
+Overview
 This Python script, **XYZ to PDB Converter**, is designed to convert molecular geometries
 from an `.xyz` file into `.pdb` format using a base `.pdb` file. It creates mul&ple `.pdb` files, each
 corresponding to a geometry from the `.xyz` input. This tool is par&cularly useful for tasks such
 as reparameteriza&ons in molecular dynamics simula&ons (e.g., for AMBER).
-## Features
+Features
 - Reads an `.xyz` file containing mul&ple molecular geometries.
 - Uses a base `.pdb` file to ensure consistent atom ordering and nomenclature.
 - Outputs mul&ple `.pdb` files, each containing one geometry from the `.xyz` file.
 - Handles mismatches between atom counts in the `.xyz` and `.pdb` files with error repor&ng.
-## Requirements
+Requirements
 - Python 3.x
 - A valid `.xyz` file containing molecular geometries.
 - A base `.pdb` file with the same atom ordering as the `.xyz` file.
-## Usage
+Usage
 Run the script from the command line with the following syntax:
 python mul&xyz_to_pdb.py input.xyz base.pdb output_prefix
-### Arguments:
+Arguments:
 1. `input.xyz`: Path to the input `.xyz` file containing molecular geometries.
 2. `base.pdb`: Path to the base `.pdb` file.
 3. `output_prefix`: Prefix for the output `.pdb` files.
-### Example:
+Example:
 python mul&xyz_to_pdb.py molecule_geometries.xyz template.pdb output_molecule
 This will generate files like `output_molecule_1.pdb`, `output_molecule_2.pdb`, etc., for each
 geometry in `molecule_geometries.xyz`.
-## Input Files
-### 1. **XYZ File**:
+Input Files
+   1. **XYZ File**:
 - Contains mul&ple molecular geometries in XYZ format.
 - Each geometry starts with the number of atoms, followed by a comment line, and then
 atomic coordinates.
-### 2. **Base PDB File**:
+  2. **Base PDB File**:
 - A valid PDB structure with ATOM/HETATM records.
 - Must have the same number of atoms as each geometry in the XYZ file.
-## Output
+Output
 The script generates one `.pdb` file per geometry in the input `.xyz`. Each output file contains:
 - The atomic coordinates from the corresponding XYZ geometry.
 - The atom ordering and other metadata from the base PDB file.
 Output files are named using the specified prefix followed by an index (e.g.,
 `output_prefix_1.pdb`, `output_prefix_2.pdb`, etc.).
-## Error Handling
+Error Handling
 - The script checks for mismatches between atom counts in the XYZ and PDB files and skips
 invalid frames with a warning.
 - If input files are missing or invalid, it exits with an error message.
-## Applica*ons
+Applications
 This tool is ideal for:
 1. Conver&ng large sets of molecular geometries from quantum chemistry scans into a
 consistent PDB format.
@@ -260,5 +260,53 @@ Key Features:
 •	Customizable depth exploration: The user can specify how deep the script should explore subdirectories.
 •	Handling missing data: If no data is available for a particular atom in a .log file, it is handled with a default value (0.0).
 •	Statistical analysis: The script computes the mean and standard deviation of ESP charges across multiple files for each atom.
+
+
+
+
+
+
+
+
+
+**frequencies_analyzer.py** script is designed to process multiple .log files, extract vibrational frequencies, and detect if any of them are negative (which might indicate an unstable structure). Here's a summary of its functionality:
+
+Script Description:
+Iterates through .log files:
+The script recursively searches the current directory (and its subdirectories) for .log files using glob. For each .log file, it processes the content to extract vibrational frequencies.
+
+Pattern Matching:
+The script uses specific patterns to locate and extract vibrational frequencies:
+
+The pattern search begins after finding the phrase "Low frequencies" in the file. It searches for a sequence of expected lines to locate and extract the frequencies:
+"Diagonal vibrational"
+"Harmonic"
+"Frequencies --"
+Extracts Frequencies and Checks for Negatives:
+After identifying the line with the frequencies, the script:
+
+Extracts the vibrational frequencies following the "Frequencies --" phrase.
+Checks if the first frequency is negative (which might indicate an unstable mode) and marks it as "YES" if negative or "NO" if positive.
+Writes Results to CSV:
+The script outputs the results to a CSV file, "frequency_results.csv", with the following columns:
+
+Filename: The name of the processed .log file.
+Frequencies: The extracted vibrational frequencies.
+Negatives?: Whether the first frequency is negative ("YES" or "NO").
+Summary Output:
+
+It prints out the names of the files processed along with the extracted frequencies and whether any negative frequencies were found.
+Key Features:
+Recursively processes files: The script searches for .log files in the current directory and subdirectories, making it suitable for large projects with multiple log files.
+Pattern-based extraction: It looks for specific patterns to reliably extract vibrational frequencies.
+CSV output: The results are saved in a CSV file for easy analysis and further processing.
+Example Output (CSV):
+The generated CSV file will contain rows like:
+
+Filename, Frequencies, Negatives?
+file1.log, 100.25 200.50 300.75, NO
+file2.log, -50.25 150.10 200.80, YES
+
+This script is useful for analyzing vibrational frequencies in computational chemistry studies, specifically for checking the stability of molecular structures based on frequency analysis.
 
 
